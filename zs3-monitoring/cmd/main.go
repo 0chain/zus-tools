@@ -284,7 +284,7 @@ func (m *ZS3Monitor) readBalance(clientID string) (int, error) {
 	}
 
 	// Create temporary wallet file
-	tempWallet, err := os.CreateTemp("", "temp_wallet_*.json")
+	tempWallet, err := os.CreateTemp("/home/ubuntu/.zcn/", "temp_wallet_*.json")
 	if err != nil {
 		return 0, fmt.Errorf("failed to create temp wallet: %v", err)
 	}
@@ -312,8 +312,10 @@ func (m *ZS3Monitor) readBalance(clientID string) (int, error) {
 		m.logger.Printf("Temporary wallet populated for %s", clientID)
 	}
 
+	fileName := filepath.Base(tempWallet.Name())
+
 	// Execute zwallet getbalance command
-	cmd := exec.Command(ZWALLET_PATH, "getbalance", "--wallet", tempWallet.Name())
+	cmd := exec.Command(ZWALLET_PATH, "getbalance", "--wallet", fileName)
 	cmd.Dir = "/opt/0chain/zwalletcli"
 	m.logCommand(cmd)
 	output, err := cmd.Output()

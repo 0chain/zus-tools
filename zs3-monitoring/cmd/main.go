@@ -24,7 +24,7 @@ var (
 	BASELINE_FILE             = getEnvOrDefault("BASELINE_FILE", "/var/lib/zs3/initial_balances.json")
 	LOG_FILE                  = getEnvOrDefault("LOG_FILE", "/var/log/zs3_monitoring.log")
 	BALANCE_THRESHOLD_PERCENT = 50
-	INCREASE_DAYS             = 30
+	THRESHOLD_DAYS            = 30
 )
 
 // getEnvOrDefault returns environment variable value or default if not set
@@ -670,7 +670,7 @@ func (m *ZS3Monitor) monitorAllocations() error {
 	}
 
 	now := time.Now().Unix()
-	cutoff := now + int64(INCREASE_DAYS*24*3600)
+	cutoff := now + int64(THRESHOLD_DAYS*24*3600)
 
 	for _, allocation := range allocations {
 		if allocation.ID == "" || allocation.ID == "null" {
@@ -694,8 +694,8 @@ func (m *ZS3Monitor) monitorAllocations() error {
 		}
 
 		if expiration < cutoff {
-			m.logger.Printf("→ Allocation %s expires within %d days, extending...", allocation.ID, INCREASE_DAYS)
-			if err := m.updateAllocation(allocation.ID, INCREASE_DAYS, 1); err != nil {
+			m.logger.Printf("→ Allocation %s expires within %d days, extending...", allocation.ID, THRESHOLD_DAYS)
+			if err := m.updateAllocation(allocation.ID, THRESHOLD_DAYS, 1); err != nil {
 				m.logger.Printf("Warning: Failed to extend allocation %s: %v", allocation.ID, err)
 			}
 		} else {

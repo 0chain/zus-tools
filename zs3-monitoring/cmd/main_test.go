@@ -500,7 +500,7 @@ func TestMonitorAllocationsLogic(t *testing.T) {
 			// This test focuses on the logic, not the actual command execution
 			// We'll test the expiration calculation logic
 
-			cutoff := now + int64(INCREASE_DAYS*24*3600)
+			cutoff := now + int64(THRESHOLD_DAYS*24*3600)
 
 			for _, allocation := range tt.allocations {
 				if allocation.ID == "" || allocation.ID == "null" {

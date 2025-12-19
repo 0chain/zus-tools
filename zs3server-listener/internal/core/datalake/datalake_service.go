@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	DatalakeServerBaseURL     = "http://localhost:9090/api/v1/datalake"
-	RegisterZS3ServerEndpoint = "/datalake/register_zs3server"
+	DatalakeServerBaseURL     = "https://datalake.blimp.software"
+	RegisterZS3ServerEndpoint = "/clusters/zs3server/register"
 	metadataFile              = "/var/lib/zs3/metadata.env"
 )
 
@@ -62,6 +62,19 @@ func parseEnvBytes(b []byte) map[string]string {
 	return result
 }
 
+// cat /var/lib/zs3/metadata.env
+// BLOBBER_ID_LIST=47a9e33f6f12f4024e21cd9be9c969fb4a7cc19cbd99a82de16dcf6b70a8f3b9,2a0558f0b5a289744cd5d69dbc6c73a81247f6bfc840f6351996dfa3d36a3da2,8c7e01cdf612517e4ae4258bcd5225bcad0d187fcb6492521b1a953f6b458ae2
+// CLIENT_ID=b6de36bff29cd8b300e67279c6c607f8f3583ef913151fbcef1883e15aec3920
+// ALLOCATION_ID=26998b89aadbd8f89427b11c06847abc57579cf29fd00bd31edb1bc9066c6c9f
+// MIN_WRITE_PRICE=0.001
+// BLOBBER_PRIVATE_IPS=10.0.1.167,10.0.1.92,10.0.1.239
+// BLOBBER_PUBLIC_IPS=15.165.236.133,3.38.103.103,3.34.189.63
+// BLOBBER_HOSTNAMES=naveen-test-38-1.zus.network,naveen-test-38-2.zus.network,naveen-test-38-3.zus.network
+// ZS3SERVER_HOSTNAME=naveen-test-38-0.zus.network
+// EBS_VOLUME_SIZE=50
+// ZS3SERVER_CLIENT_ID=b6de36bff29cd8b300e67279c6c607f8f3583ef913151fbcef1883e15aec3920
+// CLUSTER_ID=default
+
 func (s *DataLakeService) RegisterZS3Server() error {
 
 	metadataBytes, err := os.ReadFile(metadataFile)
@@ -72,14 +85,36 @@ func (s *DataLakeService) RegisterZS3Server() error {
 	reqMap := parseEnvBytes(metadataBytes)
 
 	// Validate required fields (adjust keys as needed)
+	// "BLOBBER_ID_LIST=%s\n"+
+	// 		"CLIENT_ID=%s\n"+
+	// 		"ALLOCATION_ID=%s\n"+
+	// 		"MIN_WRITE_PRICE=%s\n"+
+	// 		"BLOBBER_PRIVATE_IPS=%s\n"+
+	// 		"BLOBBER_PUBLIC_IPS=%s\n"+
+	// 		"BLOBBER_HOSTNAMES=%s\n"+
+	// 		"ZS3SERVER_HOSTNAME=%s\n"+
+	// 		"EBS_VOLUME_SIZE=%s\n"+
+	// 		"ZS3SERVER_CLIENT_ID=%s\n"+
+	// 		"CLUSTER_ID=%s\n",
 	clientID := reqMap["CLIENT_ID"]
-	serverIP := reqMap["SERVER_IP"]
+	allocationID := reqMap["ALLOCATION_ID"]
+	minWritePrice := reqMap["MIN_WRITE_PRICE"]
+	blobberPrivateIPs := reqMap["BLOBBER_PRIVATE_IPS"]
+	blobberPublicIPs := reqMap["BLOBBER_PUBLIC_IPS"]
+	blobberHostNames := reqMap["BLOBBER_HOSTNAMES"]
+	zs3ServerHostName := reqMap["ZS3SERVER_HOSTNAME"]
+	ebsVolumeSize := reqMap["EBS_VOLUME_SIZE"]
+	zs3ServerClientID := reqMap["ZS3SERVER_CLIENT_ID"]
 	clusterID := reqMap["CLUSTER_ID"]
 	blobberList := reqMap["BLOBBER_ID_LIST"]
-	allocationID := reqMap["ALLOCATION_ID"]
+	serverIP := "" // choose appropriate IP from private/public based on your logic
 
 	if clientID == "" {
 		return fmt.Errorf("%w: CLIENT_ID is required", errMissingRequiredField)
+	}
+
+	if zs3ServerClientID != "" {
+		clientID = zs3ServerClientID
 	}
 
 	if serverIP == "" {
@@ -107,7 +142,15 @@ func (s *DataLakeService) RegisterZS3Server() error {
 		ClusterID:         clusterID,
 		BlobberIDs:        blobberIDs,
 		AllocationID:      allocationID,
+		ZS3ServerHostName: zs3ServerHostName,
+		BlobberHostNames:  strings.Split(blobberHostNames, ","),
+		MinWritePrice:     minWritePrice,
+		BlobberPrivateIPs: strings.Split(blobberPrivateIPs, ","),
+		BlobberPublicIPs:  strings.Split(blobberPublicIPs, ","),
+		EbsVolumeSize:     ebsVolumeSize,
 	}
+
+	fmt.Println("Registering ZS3Server with DataLake:", reqPayload)
 
 	payloadBytes, err := json.Marshal(reqPayload)
 	if err != nil {

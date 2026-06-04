@@ -1,0 +1,41 @@
+name: Build auth-ticket image
+
+# Manual-only: builds from HEAD of the chosen branch and pushes the
+# branch-latest image (0chaindev/zus-auth-ticket:<branch>). zs3-init pulls
+# this image and copies /usr/local/bin/get-auth-ticket out, so cluster
+# instances don't build it (and don't need Go) at boot.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build the image from (HEAD of this branch is used)'
+        required: true
+        default: 'feat/auth-ticket-image'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set image tag (branch-latest)
+        run: |
+          BR="${{ github.event.inputs.branch }}"
+          echo "TAG=$(echo "$BR" | sed 's/\//-/g')" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build & push
+        run: |
+          docker build -t 0chaindev/zus-auth-ticket:${TAG} auth-ticket/
+          docker push 0chaindev/zus-auth-ticket:${TAG}
